@@ -9,8 +9,7 @@ from app.models import User, FlashcardSet, Flashcard
 from app.schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     FlashcardSetCreate, FlashcardSetResponse,
-    FlashcardCreate, FlashcardUpdate, FlashcardResponse,
-    ProgressUpdate, ProgressResponse
+    FlashcardCreate, FlashcardUpdate, FlashcardResponse
 )
 from app.auth import (
     get_password_hash, verify_password, create_access_token,
@@ -228,66 +227,6 @@ def delete_card(
         raise HTTPException(status_code=403, detail="Not authorized")
     
     db.delete(card)
-    db.commit()
-    
-    return {"success": True}
-
-# Progress endpoints
-@app.get("/api/progress/{set_id}", response_model=ProgressResponse)
-def get_progress(
-    set_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Get all cards in set
-    cards = db.query(Flashcard).filter(Flashcard.set_id == set_id).all()
-    total = len(cards)
-    
-    # Count mastered cards
-    mastered = 0
-    for card in cards:
-        progress = db.query(Progress).filter(
-            Progress.card_id == card.card_id,
-            Progress.user_id == current_user.user_id,
-            Progress.is_mastered == True
-        ).first()
-        if progress:
-            mastered += 1
-    
-    percentage = int((mastered / total * 100)) if total > 0 else 0
-    
-    return {
-        "mastered": mastered,
-        "total": total,
-        "percentage": percentage
-    }
-
-@app.post("/api/progress/card/{card_id}")
-def update_progress(
-    card_id: int,
-    progress_update: ProgressUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Find or create progress record
-    progress = db.query(Progress).filter(
-        Progress.card_id == card_id,
-        Progress.user_id == current_user.user_id
-    ).first()
-    
-    if not progress:
-        progress = Progress(
-            card_id=card_id,
-            user_id=current_user.user_id,
-            times_studied=1,
-            is_mastered=progress_update.is_mastered
-        )
-        db.add(progress)
-    else:
-        progress.times_studied += 1
-        progress.is_mastered = progress_update.is_mastered
-        progress.last_studied = datetime.utcnow()
-    
     db.commit()
     
     return {"success": True}
