@@ -1,29 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import * as api from './api'; 
 
-const mockAPI = {
-  login: async (email, password) => {
-    return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
-  },
-  register: async (email, password) => {
-    return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
-  },
-  getSets: async () => {
-    return [
-      { id: 1, title: 'Biology Chapter 3', description: 'Cell Division', cardCount: 15, createdAt: new Date() },
-      { id: 2, title: 'Spanish Vocabulary', description: 'Common phrases', cardCount: 30, createdAt: new Date() }
-    ];
-  },
-  getCards: async (setId) => {
-    return [
-      { id: 1, frontText: 'What is mitosis?', backText: 'Cell division that produces two identical daughter cells', category: 'Cell Biology', orderNumber: 1, positionX: 100, positionY: 100 },
-      { id: 2, frontText: 'What is meiosis?', backText: 'Cell division that produces four gamete cells', category: 'Cell Biology', orderNumber: 2, positionX: 300, positionY: 150 }
-    ];
-  },
-  getProgress: async (setId) => {
-    return { mastered: 5, total: 15, percentage: 33 };
-  }
-};
+// const mockAPI = {
+//   login: async (email, password) => {
+//     return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
+//   },
+//   register: async (email, password) => {
+//     return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
+//   },
+//   getSets: async () => {
+//     return [
+//       { id: 1, title: 'Biology Chapter 3', description: 'Cell Division', cardCount: 15, createdAt: new Date() },
+//       { id: 2, title: 'Spanish Vocabulary', description: 'Common phrases', cardCount: 30, createdAt: new Date() }
+//     ];
+//   },
+//   getCards: async (setId) => {
+//     return [
+//       { id: 1, frontText: 'What is mitosis?', backText: 'Cell division that produces two identical daughter cells', category: 'Cell Biology', orderNumber: 1, positionX: 100, positionY: 100 },
+//       { id: 2, frontText: 'What is meiosis?', backText: 'Cell division that produces four gamete cells', category: 'Cell Biology', orderNumber: 2, positionX: 300, positionY: 150 }
+//     ];
+//   },
+//   getProgress: async (setId) => {
+//     return { mastered: 5, total: 15, percentage: 33 };
+//   }
+// };
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -44,6 +45,9 @@ export default function App() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (user && currentView === 'dashboard') {
       loadSets();
@@ -58,43 +62,113 @@ export default function App() {
   }, [selectedSet]);
 
   const loadSets = async () => {
-    const data = await mockAPI.getSets();
-    setSets(data);
+    try {
+      setLoading(true);
+      console.log('Loading flashcard sets...');
+      
+      const data = await api.getSets();
+      console.log('Sets loaded:', data);
+      setSets(data);
+      
+    } catch (err) {
+      console.error('Failed to load sets:', err);
+      setError('Failed to load flashcard sets');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadCards = async (setId) => {
-    const data = await mockAPI.getCards(setId);
-    setCards(data);
+    try {
+      setLoading(true);
+      console.log('Loading cards for set:', setId);
+      
+      const data = await api.getCards(setId);
+      console.log('Cards loaded:', data);
+      setCards(data);
+      
+    } catch (err) {
+      console.error('Failed to load cards:', err);
+      setError('Failed to load flashcards');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadProgress = async (setId) => {
-    const data = await mockAPI.getProgress(setId);
-    setProgress(data);
+    try {
+      console.log('Loading progress for set:', setId);
+      
+      const data = await api.getProgress(setId);
+      console.log('Progress loaded:', data);
+      setProgress(data);
+      
+    } catch (err) {
+      console.error('Failed to load progress:', err);
+      // Don't show error to user, progress is optional
+    }
   };
-
   const handleLogin = async (e) => {
     e.preventDefault();
-    const result = await mockAPI.login(email, password);
-    if (result.success) {
+    
+    try {
+      setLoading(true);
+      setError(''); // Clear any previous errors
+      
+      console.log('Attempting login...');
+      const result = await api.login(email, password);
+      
+      console.log('Login successful!', result);
       setUser(result.user);
       setCurrentView('dashboard');
+      
+      // Clear the form
+      setEmail('');
+      setPassword('');
+      
+    } catch (err) {
+      console.error('❌ Login failed:', err);
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    const result = await mockAPI.register(email, password);
-    if (result.success) {
+    
+    try {
+      setLoading(true);
+      setError(''); // Clear any previous errors
+      
+      console.log('Attempting registration...');
+      const result = await api.register(email, password);
+      
+      console.log(' Registration successful!', result);
       setUser(result.user);
       setCurrentView('dashboard');
+      
+      // Clear the form
+      setEmail('');
+      setPassword('');
+      
+    } catch (err) {
+      console.error(' Registration failed:', err);
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = () => {
+    api.clearAuthToken();
     setUser(null);
     setCurrentView('login');
     setSelectedSet(null);
     setCards([]);
+    setEmail('');
+    setPassword('');
+    setError('');
   };
 
   const handleCreateCard = () => {
@@ -163,6 +237,12 @@ export default function App() {
           <h2 className="text-xl font-semibold text-center mb-6">
             {isRegistering ? 'Create Account' : 'Welcome Back'}
           </h2>
+            {/* Login Error display*/}
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                {error}
+              </div>
+            )}
           <div className="space-y-4">
             <input
               type="email"
@@ -180,9 +260,10 @@ export default function App() {
             />
             <button
               onClick={isRegistering ? handleRegister : handleLogin}
-              className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+              disabled={loading}
+              className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isRegistering ? 'Register' : 'Login'}
+              {loading ? 'Loading...' : (isRegistering ? 'Create Account' : 'Sign In')}
             </button>
             <button
               onClick={() => setIsRegistering(!isRegistering)}

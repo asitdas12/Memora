@@ -84,4 +84,5 @@ coverage/
 *.tmp
 *.temp
 .cache/
+setupnotes
 
