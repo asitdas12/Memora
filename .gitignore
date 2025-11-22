@@ -29,6 +29,7 @@ frontend/node_modules/
 # ========================================
 # BUILD OUTPUT
 # ========================================
+back-env/
 build/
 dist/
 *.log
