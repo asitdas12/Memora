@@ -2,30 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from './api'; 
 
-// const mockAPI = {
-//   login: async (email, password) => {
-//     return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
-//   },
-//   register: async (email, password) => {
-//     return { success: true, user: { id: 1, email, name: 'Demo User' }, token: 'mock-jwt-token' };
-//   },
-//   getSets: async () => {
-//     return [
-//       { id: 1, title: 'Biology Chapter 3', description: 'Cell Division', cardCount: 15, createdAt: new Date() },
-//       { id: 2, title: 'Spanish Vocabulary', description: 'Common phrases', cardCount: 30, createdAt: new Date() }
-//     ];
-//   },
-//   getCards: async (setId) => {
-//     return [
-//       { id: 1, frontText: 'What is mitosis?', backText: 'Cell division that produces two identical daughter cells', category: 'Cell Biology', orderNumber: 1, positionX: 100, positionY: 100 },
-//       { id: 2, frontText: 'What is meiosis?', backText: 'Cell division that produces four gamete cells', category: 'Cell Biology', orderNumber: 2, positionX: 300, positionY: 150 }
-//     ];
-//   },
-//   getProgress: async (setId) => {
-//     return { mastered: 5, total: 15, percentage: 33 };
-//   }
-// };
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login');
@@ -40,7 +16,9 @@ export default function App() {
   const [isRegistering, setIsRegistering] = useState(false);
 
   const [showCardCreator, setShowCardCreator] = useState(false);
+  const [showSetCreator, setShowSetCreator] = useState(false);
   const [newCard, setNewCard] = useState({ frontText: '', backText: '', category: '' });
+  const [newSet, setNewSet] = useState({ title: '', description: '' });
 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -56,8 +34,8 @@ export default function App() {
 
   useEffect(() => {
     if (selectedSet) {
-      loadCards(selectedSet.id);
-      loadProgress(selectedSet.id);
+      loadCards(selectedSet.set_id);
+      loadProgress(selectedSet.set_id);
     }
   }, [selectedSet]);
 
@@ -108,12 +86,13 @@ export default function App() {
       // Don't show error to user, progress is optional
     }
   };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     
     try {
       setLoading(true);
-      setError(''); // Clear any previous errors
+      setError('');
       
       console.log('Attempting login...');
       const result = await api.login(email, password);
@@ -122,7 +101,6 @@ export default function App() {
       setUser(result.user);
       setCurrentView('dashboard');
       
-      // Clear the form
       setEmail('');
       setPassword('');
       
@@ -139,21 +117,20 @@ export default function App() {
     
     try {
       setLoading(true);
-      setError(''); // Clear any previous errors
+      setError('');
       
       console.log('Attempting registration...');
       const result = await api.register(email, password);
       
-      console.log(' Registration successful!', result);
+      console.log('✅ Registration successful!', result);
       setUser(result.user);
       setCurrentView('dashboard');
       
-      // Clear the form
       setEmail('');
       setPassword('');
       
     } catch (err) {
-      console.error(' Registration failed:', err);
+      console.error('❌ Registration failed:', err);
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
@@ -171,23 +148,103 @@ export default function App() {
     setError('');
   };
 
-  const handleCreateCard = () => {
-    if (newCard.frontText && newCard.backText) {
-      const card = {
-        id: Date.now(),
-        ...newCard,
-        orderNumber: cards.length + 1,
-        positionX: Math.random() * 400 + 100,
-        positionY: Math.random() * 300 + 100
-      };
-      setCards([...cards, card]);
-      setNewCard({ frontText: '', backText: '', category: '' });
-      setShowCardCreator(false);
+  // NEW: Handle creating a flashcard set
+  const handleCreateSet = async () => {
+    if (!newSet.title) {
+      setError('Set title is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Creating new set...');
+      const createdSet = await api.createSet(newSet.title, newSet.description);
+      
+      console.log('✅ Set created:', createdSet);
+      
+      // Add to sets list
+      setSets([...sets, createdSet]);
+      
+      // Clear form and close modal
+      setNewSet({ title: '', description: '' });
+      setShowSetCreator(false);
+      
+    } catch (err) {
+      console.error('❌ Failed to create set:', err);
+      setError(err.message || 'Failed to create flashcard set');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteCard = (cardId) => {
-    setCards(cards.filter(c => c.id !== cardId));
+  // UPDATED: Handle creating a card with API
+  const handleCreateCard = async () => {
+    if (!newCard.frontText || !newCard.backText) {
+      setError('Both front and back text are required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Creating new card...');
+      
+      // Prepare card data matching your api.js expectations
+      const cardData = {
+        front_text: newCard.frontText,
+        back_text: newCard.backText,
+        category: newCard.category || null,
+        order_number: cards.length + 1,
+        position_x: Math.random() * 400 + 100,
+        position_y: Math.random() * 300 + 100
+      };
+      
+      const createdCard = await api.createCard(selectedSet.set_id, cardData);
+      
+      console.log('✅ Card created:', createdCard);
+      
+      // Add to cards list
+      setCards([...cards, createdCard]);
+      
+      // Clear form and close modal
+      setNewCard({ frontText: '', backText: '', category: '' });
+      setShowCardCreator(false);
+      
+    } catch (err) {
+      console.error('❌ Failed to create card:', err);
+      setError(err.message || 'Failed to create flashcard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // UPDATED: Handle deleting a card with API
+  const handleDeleteCard = async (cardId) => {
+    if (!window.confirm('Are you sure you want to delete this card?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Deleting card:', cardId);
+      await api.deleteCard(cardId);
+      
+      console.log('✅ Card deleted');
+      
+      // Remove from cards list
+      setCards(cards.filter(c => c.card_id !== cardId));
+      
+    } catch (err) {
+      console.error('❌ Failed to delete card:', err);
+      setError(err.message || 'Failed to delete flashcard');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startStudyMode = (mode) => {
@@ -237,12 +294,11 @@ export default function App() {
           <h2 className="text-xl font-semibold text-center mb-6">
             {isRegistering ? 'Create Account' : 'Welcome Back'}
           </h2>
-            {/* Login Error display*/}
-            {error && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
           <div className="space-y-4">
             <input
               type="email"
@@ -301,7 +357,7 @@ export default function App() {
                 className="bg-white rounded-xl shadow-2xl p-12 w-full max-w-2xl min-h-80 flex items-center justify-center cursor-pointer hover:shadow-3xl transition transform hover:scale-105"
               >
                 <p className="text-2xl text-center text-gray-800">
-                  {isFlipped ? currentCard.backText : currentCard.frontText}
+                  {isFlipped ? currentCard.back_text : currentCard.front_text}
                 </p>
               </div>
               
@@ -331,14 +387,14 @@ export default function App() {
             </div>
             <div className="space-y-4">
               {cards.map((card, index) => (
-                <div key={card.id} className="bg-white rounded-lg shadow p-6">
+                <div key={card.card_id} className="bg-white rounded-lg shadow p-6">
                   <div className="flex items-start gap-4">
                     <div className="bg-indigo-100 text-indigo-600 font-bold w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
                       {index + 1}
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-800 mb-2">{card.frontText}</p>
-                      <p className="text-gray-600">{card.backText}</p>
+                      <p className="font-semibold text-gray-800 mb-2">{card.front_text}</p>
+                      <p className="text-gray-600">{card.back_text}</p>
                       {card.category && (
                         <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-600 text-sm rounded-full">
                           {card.category}
@@ -371,9 +427,9 @@ export default function App() {
                   <h3 className="text-xl font-semibold text-gray-700 mb-4">{category}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categoryCards.map(card => (
-                      <div key={card.id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
-                        <p className="font-semibold text-gray-800 mb-2">{card.frontText}</p>
-                        <p className="text-sm text-gray-600">{card.backText}</p>
+                      <div key={card.card_id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
+                        <p className="font-semibold text-gray-800 mb-2">{card.front_text}</p>
+                        <p className="text-sm text-gray-600">{card.back_text}</p>
                       </div>
                     ))}
                   </div>
@@ -398,11 +454,11 @@ export default function App() {
             <div className="bg-white rounded-xl shadow-lg p-8 min-h-screen-75 relative">
               {cards.map(card => (
                 <div
-                  key={card.id}
-                  style={{ left: `${card.positionX}px`, top: `${card.positionY}px` }}
+                  key={card.card_id}
+                  style={{ left: `${card.position_x}px`, top: `${card.position_y}px` }}
                   className="absolute bg-yellow-100 border-2 border-yellow-300 rounded-lg p-4 w-48 shadow cursor-move hover:shadow-xl transition"
                 >
-                  <p className="text-sm font-semibold text-gray-800">{card.frontText}</p>
+                  <p className="text-sm font-semibold text-gray-800">{card.front_text}</p>
                   {card.category && (
                     <span className="text-xs bg-yellow-200 px-2 py-1 rounded mt-2 inline-block">
                       {card.category}
@@ -435,6 +491,12 @@ export default function App() {
         </div>
 
         <div className="max-w-7xl mx-auto p-8">
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {progress && (
             <div className="bg-white rounded-lg shadow p-6 mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -479,11 +541,11 @@ export default function App() {
             </div>
             <div className="p-6 space-y-4">
               {cards.map((card, index) => (
-                <div key={card.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                <div key={card.card_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-800 mb-1">{card.frontText}</p>
-                      <p className="text-gray-600 text-sm mb-2">{card.backText}</p>
+                      <p className="font-semibold text-gray-800 mb-1">{card.front_text}</p>
+                      <p className="text-gray-600 text-sm mb-2">{card.back_text}</p>
                       {card.category && (
                         <span className="inline-block px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
                           {card.category}
@@ -494,7 +556,7 @@ export default function App() {
                       <button className="p-2 text-gray-400 hover:text-blue-600">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDeleteCard(card.id)} className="p-2 text-gray-400 hover:text-red-600">
+                      <button onClick={() => handleDeleteCard(card.card_id)} className="p-2 text-gray-400 hover:text-red-600">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -506,7 +568,7 @@ export default function App() {
         </div>
 
         {showCardCreator && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-800">Create New Flashcard</h3>
@@ -514,6 +576,11 @@ export default function App() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Front (Question)</label>
@@ -545,8 +612,12 @@ export default function App() {
                     placeholder="e.g., Cell Biology"
                   />
                 </div>
-                <button onClick={handleCreateCard} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                  <Save className="w-4 h-4" /> Create Card
+                <button 
+                  onClick={handleCreateCard} 
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" /> {loading ? 'Creating...' : 'Create Card'}
                 </button>
               </div>
             </div>
@@ -574,9 +645,18 @@ export default function App() {
       </div>
 
       <div className="max-w-7xl mx-auto p-8">
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800">My Flashcard Sets</h2>
-          <button className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-lg">
+          <button 
+            onClick={() => setShowSetCreator(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-lg"
+          >
             <Plus className="w-5 h-5" /> New Set
           </button>
         </div>
@@ -584,13 +664,13 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sets.map(set => (
             <div
-              key={set.id}
+              key={set.set_id}
               onClick={() => setSelectedSet(set)}
               className="bg-white rounded-lg shadow hover:shadow-xl transition cursor-pointer p-6"
             >
               <div className="flex items-start justify-between mb-4">
                 <BookOpen className="w-8 h-8 text-indigo-600" />
-                <span className="text-sm text-gray-500">{set.cardCount} cards</span>
+                <span className="text-sm text-gray-500">{set.card_count} cards</span>
               </div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">{set.title}</h3>
               <p className="text-gray-600 text-sm">{set.description}</p>
@@ -598,6 +678,54 @@ export default function App() {
           ))}
         </div>
       </div>
+
+      {/* Set Creator Modal */}
+      {showSetCreator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-800">Create New Flashcard Set</h3>
+              <button onClick={() => setShowSetCreator(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Set Title *</label>
+                <input
+                  type="text"
+                  value={newSet.title}
+                  onChange={(e) => setNewSet({ ...newSet, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., Biology Chapter 3"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                <textarea
+                  value={newSet.description}
+                  onChange={(e) => setNewSet({ ...newSet, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  rows="3"
+                  placeholder="Brief description of this flashcard set"
+                />
+              </div>
+              <button 
+                onClick={handleCreateSet}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" /> {loading ? 'Creating...' : 'Create Set'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
