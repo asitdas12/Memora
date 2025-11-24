@@ -17,8 +17,10 @@ export default function App() {
 
   const [showCardCreator, setShowCardCreator] = useState(false);
   const [showSetCreator, setShowSetCreator] = useState(false);
+  const [showCardEditor, setShowCardEditor] = useState(false);
   const [newCard, setNewCard] = useState({ frontText: '', backText: '', category: '' });
   const [newSet, setNewSet] = useState({ title: '', description: '' });
+  const [editingCard, setEditingCard] = useState(null);
 
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -242,6 +244,58 @@ export default function App() {
     } catch (err) {
       console.error('❌ Failed to delete card:', err);
       setError(err.message || 'Failed to delete flashcard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // NEW: Handle editing a card
+  const handleEditCard = (card) => {
+    setEditingCard({
+      card_id: card.card_id,
+      frontText: card.front_text,
+      backText: card.back_text,
+      category: card.category || ''
+    });
+    setShowCardEditor(true);
+  };
+
+  // NEW: Handle updating a card with API
+  const handleUpdateCard = async () => {
+    if (!editingCard.frontText || !editingCard.backText) {
+      setError('Both front and back text are required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Updating card:', editingCard.card_id);
+      
+      // Prepare update data matching your api.js expectations
+      const cardData = {
+        front_text: editingCard.frontText,
+        back_text: editingCard.backText,
+        category: editingCard.category || null
+      };
+      
+      const updatedCard = await api.updateCard(editingCard.card_id, cardData);
+      
+      console.log('✅ Card updated:', updatedCard);
+      
+      // Update the card in the cards list
+      setCards(cards.map(c => 
+        c.card_id === updatedCard.card_id ? updatedCard : c
+      ));
+      
+      // Clear form and close modal
+      setEditingCard(null);
+      setShowCardEditor(false);
+      
+    } catch (err) {
+      console.error('❌ Failed to update card:', err);
+      setError(err.message || 'Failed to update flashcard');
     } finally {
       setLoading(false);
     }
@@ -553,7 +607,10 @@ export default function App() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600">
+                      <button 
+                        onClick={() => handleEditCard(card)}
+                        className="p-2 text-gray-400 hover:text-blue-600"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleDeleteCard(card.card_id)} className="p-2 text-gray-400 hover:text-red-600">
@@ -618,6 +675,64 @@ export default function App() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" /> {loading ? 'Creating...' : 'Create Card'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Card Editor Modal */}
+        {showCardEditor && editingCard && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-800">Edit Flashcard</h3>
+                <button onClick={() => { setShowCardEditor(false); setEditingCard(null); }} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Front (Question)</label>
+                  <textarea
+                    value={editingCard.frontText}
+                    onChange={(e) => setEditingCard({ ...editingCard, frontText: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="3"
+                    placeholder="What is the question?"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Back (Answer)</label>
+                  <textarea
+                    value={editingCard.backText}
+                    onChange={(e) => setEditingCard({ ...editingCard, backText: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="3"
+                    placeholder="What is the answer?"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
+                  <input
+                    type="text"
+                    value={editingCard.category}
+                    onChange={(e) => setEditingCard({ ...editingCard, category: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g., Cell Biology"
+                  />
+                </div>
+                <button 
+                  onClick={handleUpdateCard} 
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" /> {loading ? 'Updating...' : 'Update Card'}
                 </button>
               </div>
             </div>
