@@ -301,6 +301,35 @@ export default function App() {
     }
   };
 
+  // NEW: Handle deleting a flashcard set
+  const handleDeleteSet = async (setId, e) => {
+    // Prevent the click from bubbling up to the parent div (which opens the set)
+    e.stopPropagation();
+    
+    if (!window.confirm('Are you sure you want to delete this flashcard set? This will delete all cards in the set.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Deleting set:', setId);
+      await api.deleteSet(setId);
+      
+      console.log('✅ Set deleted');
+      
+      // Remove from sets list
+      setSets(sets.filter(s => s.set_id !== setId));
+      
+    } catch (err) {
+      console.error('❌ Failed to delete set:', err);
+      setError(err.message || 'Failed to delete flashcard set');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const startStudyMode = (mode) => {
     setStudyMode(mode);
     setCurrentCardIndex(0);
@@ -781,8 +810,17 @@ export default function App() {
             <div
               key={set.set_id}
               onClick={() => setSelectedSet(set)}
-              className="bg-white rounded-lg shadow hover:shadow-xl transition cursor-pointer p-6"
+              className="bg-white rounded-lg shadow hover:shadow-xl transition cursor-pointer p-6 relative group"
             >
+              {/* Delete button - appears on hover */}
+              <button
+                onClick={(e) => handleDeleteSet(set.set_id, e)}
+                className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                title="Delete set"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
               <div className="flex items-start justify-between mb-4">
                 <BookOpen className="w-8 h-8 text-indigo-600" />
                 <span className="text-sm text-gray-500">{set.card_count} cards</span>

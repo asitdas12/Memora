@@ -118,6 +118,27 @@ def create_set(
         "card_count": 0
     }
 
+@app.delete("/api/sets/{set_id}")
+def delete_set(
+    set_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Find the set
+    flashcard_set = db.query(FlashcardSet).filter(
+        FlashcardSet.set_id == set_id,
+        FlashcardSet.user_id == current_user.user_id
+    ).first()
+    
+    if not flashcard_set:
+        raise HTTPException(status_code=404, detail="Set not found")
+    
+    # Delete the set (cascades to delete all cards due to relationship)
+    db.delete(flashcard_set)
+    db.commit()
+    
+    return {"success": True, "message": "Flashcard set deleted"}
+
 # Flashcard endpoints
 @app.get("/api/sets/{set_id}/cards", response_model=List[FlashcardResponse])
 def get_cards(
