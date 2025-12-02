@@ -27,6 +27,29 @@ export default function App() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const validatePassword = (password) => {
+    const errors = [];
+    
+    if (password.length < 9) {
+      errors.push("Password must be at least 9 characters");
+    }
+    if (!/\d/.test(password)) {
+      errors.push("Password must contain at least one number");
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push("Password must contain at least one special character");
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password must contain at least one uppercase letter");
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push("Password must contain at least one lowercase letter");
+    }
+    
+    return errors;
+  };
 
   useEffect(() => {
     if (user && currentView === 'dashboard') {
@@ -114,30 +137,37 @@ export default function App() {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+const handleRegister = async (e) => {
+  e.preventDefault();
+  
+  // Validate password first
+  const passwordErrors = validatePassword(password);
+  if (passwordErrors.length > 0) {
+    setError(passwordErrors.join(". "));
+    return; // Stop here, don't send to backend
+  }
+  
+  try {
+    setLoading(true);
+    setError('');
     
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('Attempting registration...');
-      const result = await api.register(email, password);
-      
-      console.log('✅ Registration successful!', result);
-      setUser(result.user);
-      setCurrentView('dashboard');
-      
-      setEmail('');
-      setPassword('');
-      
-    } catch (err) {
-      console.error('❌ Registration failed:', err);
-      setError(err.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('📝 Attempting registration...');
+    const result = await api.register(email, password);
+    
+    console.log('✅ Registration successful!', result);
+    setUser(result.user);
+    setCurrentView('dashboard');
+    
+    setEmail('');
+    setPassword('');
+    
+  } catch (err) {
+    console.error('❌ Registration failed:', err);
+    setError(err.message || 'Registration failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = () => {
     api.clearAuthToken();
@@ -392,11 +422,35 @@ export default function App() {
             />
             <input
               type="password"
-              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
+              placeholder="Enter your password"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            {passwordFocused && (
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs">
+                <p className="font-semibold mb-1">Password requirements:</p>
+                <ul className="space-y-1">
+                  <li className={password.length >= 9 ? "text-green-600" : "text-gray-600"}>
+                    ✓ At least 9 characters
+                  </li>
+                  <li className={/\d/.test(password) ? "text-green-600" : "text-gray-600"}>
+                    ✓ Contains a number
+                  </li>
+                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-600" : "text-gray-600"}>
+                    ✓ Contains a special character (!@#$%^&*)
+                  </li>
+                  <li className={/[A-Z]/.test(password) ? "text-green-600" : "text-gray-600"}>
+                    ✓ Contains an uppercase letter
+                  </li>
+                  <li className={/[a-z]/.test(password) ? "text-green-600" : "text-gray-600"}>
+                    ✓ Contains a lowercase letter
+                  </li>
+                </ul>
+              </div>
+            )}
             <button
               onClick={isRegistering ? handleRegister : handleLogin}
               disabled={loading}
