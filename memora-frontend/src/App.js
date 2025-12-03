@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import LoginForm from './components/auth/LoginForm';
+import FlipMode from './components/study/FlipMode';
+import ListMode from './components/study/ListMode';
+import CategoryMode from './components/study/CategoryMode';
+
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from './api'; 
 
@@ -13,7 +18,7 @@ export default function App() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
+  // const [isRegistering, setIsRegistering] = useState(false);
 
   const [showCardCreator, setShowCardCreator] = useState(false);
   const [showSetCreator, setShowSetCreator] = useState(false);
@@ -40,30 +45,9 @@ export default function App() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  // const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const validatePassword = (password) => {
-    const errors = [];
-    
-    if (password.length < 9) {
-      errors.push("Password must be at least 9 characters");
-    }
-    if (!/\d/.test(password)) {
-      errors.push("Password must contain at least one number");
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push("Password must contain at least one special character");
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push("Password must contain at least one uppercase letter");
-    }
-    if (!/[a-z]/.test(password)) {
-      errors.push("Password must contain at least one lowercase letter");
-    }
-    
-    return errors;
-  };
-
+  
   useEffect(() => {
     if (user && currentView === 'dashboard') {
       loadSets();
@@ -125,62 +109,6 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('Attempting login...');
-      const result = await api.login(email, password);
-      
-      console.log('Login successful!', result);
-      setUser(result.user);
-      setCurrentView('dashboard');
-      
-      setEmail('');
-      setPassword('');
-      
-    } catch (err) {
-      console.error('❌ Login failed:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-
-  // Validate password first
-  const passwordErrors = validatePassword(password);
-  if (passwordErrors.length > 0) {
-    setError(passwordErrors.join(". "));
-    return; // Stop here, don't send to backend
-  }
-    
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('Attempting registration...');
-      const result = await api.register(email, password);
-      
-      console.log('✅ Registration successful!', result);
-      setUser(result.user);
-      setCurrentView('dashboard');
-      
-      setEmail('');
-      setPassword('');
-      
-    } catch (err) {
-      console.error('❌ Registration failed:', err);
-      setError(err.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     api.clearAuthToken();
@@ -398,631 +326,41 @@ export default function App() {
     setSelectedCategory(null);
   };
 
-  const nextCard = () => {
-    if (currentCardIndex < cards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-      setIsFlipped(false);
-    }
-  };
-
-  const prevCard = () => {
-    if (currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-      setIsFlipped(false);
-    }
-  };
-
-  const groupCardsByCategory = () => {
-    const grouped = {};
-    cards.forEach(card => {
-      const cat = card.category || 'Uncategorized';
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(card);
-    });
-    return grouped;
-  };
-
-  // Handle toggling quiz mode
-  const handleToggleQuizMode = () => {
-    setIsQuizMode(!isQuizMode);
-    setUserAnswers({});
-    setQuizChecked(false);
-    setQuizScore({ correct: 0, total: 0 });
-  };
-
-  // Handle user answer input
-  const handleAnswerChange = (cardId, value) => {
-    setUserAnswers({
-      ...userAnswers,
-      [cardId]: value
-    });
-  };
-
-  // Check quiz answers
-  const handleCheckQuiz = () => {
-    let correct = 0;
-    const total = cards.length;
-
-    cards.forEach((card, index) => {
-      const correctOrder = index + 1;
-      const userAnswer = parseInt(userAnswers[card.card_id]);
-      
-      if (userAnswer === correctOrder) {
-        correct++;
-      }
-    });
-
-    setQuizScore({ correct, total });
-    setQuizChecked(true);
-  };
-
-  // Reset quiz
-  const handleResetQuiz = () => {
-    setUserAnswers({});
-    setQuizChecked(false);
-    setQuizScore({ correct: 0, total: 0 });
-  };
-
-  // Handle toggling category quiz mode
-  const handleToggleCategoryQuizMode = () => {
-    setIsCategoryQuizMode(!isCategoryQuizMode);
-    setCategoryAnswers({});
-    setCategoryQuizChecked(false);
-    setCategoryQuizScore({ correct: 0, total: 0 });
-    setSelectedCategory(null);
-  };
-
-  // Handle category selection
-  const handleSelectCategory = (category) => {
-    setSelectedCategory(category);
-  };
-
-  // Handle assigning category to card
-  const handleAssignCategoryToCard = (cardId) => {
-    if (!selectedCategory) return;
-    
-    setCategoryAnswers({
-      ...categoryAnswers,
-      [cardId]: selectedCategory
-    });
-  };
-
-  // Check category quiz answers
-  const handleCheckCategoryQuiz = () => {
-    let correct = 0;
-    const total = cards.length;
-
-    cards.forEach((card) => {
-      const correctCategory = card.category || 'Uncategorized';
-      const userAnswer = categoryAnswers[card.card_id];
-      
-      if (userAnswer === correctCategory) {
-        correct++;
-      }
-    });
-
-    setCategoryQuizScore({ correct, total });
-    setCategoryQuizChecked(true);
-  };
-
-  // Reset category quiz
-  const handleResetCategoryQuiz = () => {
-    setCategoryAnswers({});
-    setCategoryQuizChecked(false);
-    setCategoryQuizScore({ correct: 0, total: 0 });
-    setSelectedCategory(null);
-  };
-
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-          <div className="flex items-center justify-center mb-6">
-            <BookOpen className="w-12 h-12 text-indigo-600 mr-3" />
-            <h1 className="text-3xl font-bold text-gray-800">Memora</h1>
-          </div>
-          <h2 className="text-xl font-semibold text-center mb-6">
-            {isRegistering ? 'Create Account' : 'Welcome Back'}
-          </h2>
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
-          <div className="space-y-4">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={() => setPasswordFocused(false)}
-              placeholder="Enter your password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {passwordFocused && (
-              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs">
-                <p className="font-semibold mb-1">Password requirements:</p>
-                <ul className="space-y-1">
-                  <li className={password.length >= 9 ? "text-green-600" : "text-gray-600"}>
-                    ✓ At least 9 characters
-                  </li>
-                  <li className={/\d/.test(password) ? "text-green-600" : "text-gray-600"}>
-                    ✓ Contains a number
-                  </li>
-                  <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-600" : "text-gray-600"}>
-                    ✓ Contains a special character (!@#$%^&*)
-                  </li>
-                  <li className={/[A-Z]/.test(password) ? "text-green-600" : "text-gray-600"}>
-                    ✓ Contains an uppercase letter
-                  </li>
-                  <li className={/[a-z]/.test(password) ? "text-green-600" : "text-gray-600"}>
-                    ✓ Contains a lowercase letter
-                  </li>
-                </ul>
-              </div>
-            )}
-            <button
-              onClick={isRegistering ? handleRegister : handleLogin}
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Loading...' : (isRegistering ? 'Create Account' : 'Sign In')}
-            </button>
-            <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="w-full text-indigo-600 hover:underline"
-            >
-              {isRegistering ? 'Already have an account? Login' : "Don't have an account? Register"}
-            </button>
-          </div>
-        </div>
-      </div>
+      <LoginForm 
+        onLoginSuccess={(user) => {
+          setUser(user);
+          setCurrentView('dashboard');
+        }} 
+      />
     );
+
   }
 
   if (studyMode) {
     const currentCard = cards[currentCardIndex];
     
     if (studyMode === 'flip') {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800">Flip Mode</h2>
-              <button onClick={exitStudyMode} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                <X className="w-4 h-4" /> Exit
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <button onClick={prevCard} disabled={currentCardIndex === 0} className="p-2 bg-white rounded-full shadow-lg disabled:opacity-50">
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              
-              <div 
-                onClick={() => setIsFlipped(!isFlipped)}
-                className="bg-white rounded-xl shadow-2xl p-12 w-full max-w-2xl min-h-80 flex items-center justify-center cursor-pointer hover:shadow-3xl transition transform hover:scale-105"
-              >
-                <p className="text-2xl text-center text-gray-800">
-                  {isFlipped ? currentCard.back_text : currentCard.front_text}
-                </p>
-              </div>
-              
-              <button onClick={nextCard} disabled={currentCardIndex === cards.length - 1} className="p-2 bg-white rounded-full shadow-lg disabled:opacity-50">
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="text-center text-gray-600">
-              Card {currentCardIndex + 1} of {cards.length}
-              <div className="text-sm mt-2">Click card to flip</div>
-            </div>
-          </div>
-        </div>
-      );
+      return <FlipMode cards={cards} onExit={exitStudyMode} />;
     }
 
     if (studyMode === 'list') {
-      // Sort cards by order_number
-      const sortedCards = [...cards].sort((a, b) => {
-        const orderA = a.order_number || 0;
-        const orderB = b.order_number || 0;
-        return orderA - orderB;
-      });
 
-      return (
-        <div className="min-h-screen bg-gray-50 p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800">Ordered List Mode</h2>
-              <div className="flex items-center gap-4">
-                {/* Quiz Mode Toggle */}
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
-                  <span className="text-sm font-medium text-gray-700">Quiz Mode</span>
-                  <button
-                    onClick={handleToggleQuizMode}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isQuizMode ? 'bg-indigo-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        isQuizMode ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <button onClick={exitStudyMode} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                  <X className="w-4 h-4" /> Exit
-                </button>
-              </div>
-            </div>
-
-            {/* Quiz Instructions */}
-            {isQuizMode && !quizChecked && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-blue-900 mb-2">📝 Quiz Instructions</h3>
-                <p className="text-sm text-blue-800">
-                  Enter the correct order number (1-{sortedCards.length}) for each flashcard based on their content. 
-                  Click "Check Answers" when you're ready to see your score!
-                </p>
-              </div>
-            )}
-
-            {/* Quiz Results */}
-            {isQuizMode && quizChecked && (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-gray-800">Quiz Results</h3>
-                  <button
-                    onClick={handleResetQuiz}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
-                  >
-                    Try Again
-                  </button>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="text-3xl font-bold text-indigo-600">
-                      {quizScore.correct} / {quizScore.total}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {Math.round((quizScore.correct / quizScore.total) * 100)}% Correct
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div
-                        className="bg-indigo-600 h-4 rounded-full transition-all"
-                        style={{ width: `${(quizScore.correct / quizScore.total) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Check Answers Button */}
-            {isQuizMode && !quizChecked && (
-              <div className="mb-6 flex justify-center">
-                <button
-                  onClick={handleCheckQuiz}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow-lg"
-                >
-                  ✓ Check Answers
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {sortedCards.map((card, index) => {
-                const correctOrder = index + 1;
-                const userAnswer = parseInt(userAnswers[card.card_id]);
-                const isCorrect = userAnswer === correctOrder;
-                const showFeedback = isQuizMode && quizChecked;
-
-                return (
-                  <div
-                    key={card.card_id}
-                    className={`bg-white rounded-lg shadow p-6 ${
-                      showFeedback ? (isCorrect ? 'border-2 border-green-500' : 'border-2 border-red-500') : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Order Number Display or Input */}
-                      {!isQuizMode ? (
-                        <div className="bg-indigo-100 text-indigo-600 font-bold w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
-                          {card.order_number || correctOrder}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="number"
-                            min="1"
-                            max={sortedCards.length}
-                            value={userAnswers[card.card_id] || ''}
-                            onChange={(e) => handleAnswerChange(card.card_id, e.target.value)}
-                            disabled={quizChecked}
-                            className={`w-16 px-2 py-1 text-center border-2 rounded-lg font-bold ${
-                              showFeedback
-                                ? isCorrect
-                                  ? 'border-green-500 bg-green-50 text-green-700'
-                                  : 'border-red-500 bg-red-50 text-red-700'
-                                : 'border-gray-300'
-                            }`}
-                            placeholder="#"
-                          />
-                          {showFeedback && !isCorrect && (
-                            <div className="text-xs text-gray-600">
-                              Correct: {correctOrder}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Card Content */}
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800 mb-2">{card.front_text}</p>
-                        <p className="text-gray-600">{card.back_text}</p>
-                        {card.category && (
-                          <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-600 text-sm rounded-full">
-                            {card.category}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Feedback Icon */}
-                      {showFeedback && (
-                        <div className="flex-shrink-0">
-                          {isCorrect ? (
-                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-bold">✓</span>
-                            </div>
-                          ) : (
-                            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-bold">✗</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
+      return <ListMode 
+        cards={cards} 
+        onExit={exitStudyMode} 
+      />;
+      
     }
 
     if (studyMode === 'categorical') {
-      const grouped = groupCardsByCategory();
-      const categories = Object.keys(grouped);
+
+      return <CategoryMode 
+        cards={cards} 
+        onExit={exitStudyMode} 
+      />;
       
-      return (
-        <div className="min-h-screen bg-gray-50 p-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800">Categorical Mode</h2>
-              <div className="flex items-center gap-4">
-                {/* Quiz Mode Toggle */}
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
-                  <span className="text-sm font-medium text-gray-700">Quiz Mode</span>
-                  <button
-                    onClick={handleToggleCategoryQuizMode}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isCategoryQuizMode ? 'bg-indigo-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        isCategoryQuizMode ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <button onClick={exitStudyMode} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                  <X className="w-4 h-4" /> Exit
-                </button>
-              </div>
-            </div>
-
-            {/* Quiz Mode UI */}
-            {isCategoryQuizMode ? (
-              <>
-                {/* Quiz Instructions */}
-                {!categoryQuizChecked && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <h3 className="font-semibold text-blue-900 mb-2">📝 Quiz Instructions</h3>
-                    <p className="text-sm text-blue-800 mb-2">
-                      1. Click on a category button below to select it
-                    </p>
-                    <p className="text-sm text-blue-800 mb-2">
-                      2. Click on flashcards to assign the selected category to them
-                    </p>
-                    <p className="text-sm text-blue-800">
-                      3. Click "Check Answers" when you're done to see your score!
-                    </p>
-                  </div>
-                )}
-
-                {/* Category Selection Buttons */}
-                {!categoryQuizChecked && (
-                  <div className="bg-white rounded-lg shadow p-6 mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Select a Category:</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {categories.map(category => (
-                        <button
-                          key={category}
-                          onClick={() => handleSelectCategory(category)}
-                          className={`px-4 py-2 rounded-lg font-medium transition ${
-                            selectedCategory === category
-                              ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {category}
-                        </button>
-                      ))}
-                    </div>
-                    {selectedCategory && (
-                      <div className="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-                        <p className="text-sm text-indigo-900">
-                          <strong>Selected:</strong> {selectedCategory} - Now click on cards to assign this category
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Quiz Results */}
-                {categoryQuizChecked && (
-                  <div className="bg-white rounded-lg shadow p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-gray-800">Quiz Results</h3>
-                      <button
-                        onClick={handleResetCategoryQuiz}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
-                      >
-                        Try Again
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="text-3xl font-bold text-indigo-600">
-                          {categoryQuizScore.correct} / {categoryQuizScore.total}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {Math.round((categoryQuizScore.correct / categoryQuizScore.total) * 100)}% Correct
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                          <div
-                            className="bg-indigo-600 h-4 rounded-full transition-all"
-                            style={{ width: `${(categoryQuizScore.correct / categoryQuizScore.total) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Check Answers Button */}
-                {!categoryQuizChecked && (
-                  <div className="mb-6 flex justify-center">
-                    <button
-                      onClick={handleCheckCategoryQuiz}
-                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold shadow-lg"
-                    >
-                      ✓ Check Answers
-                    </button>
-                  </div>
-                )}
-
-                {/* All Cards in Quiz Mode */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Flashcards ({Object.keys(categoryAnswers).length} / {cards.length} assigned)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {cards.map(card => {
-                      const correctCategory = card.category || 'Uncategorized';
-                      const userAnswer = categoryAnswers[card.card_id];
-                      const isCorrect = userAnswer === correctCategory;
-                      const showFeedback = categoryQuizChecked;
-                      const hasAnswer = userAnswer !== undefined;
-
-                      return (
-                        <div
-                          key={card.card_id}
-                          onClick={() => !categoryQuizChecked && handleAssignCategoryToCard(card.card_id)}
-                          className={`rounded-lg shadow p-4 transition cursor-pointer ${
-                            showFeedback
-                              ? isCorrect
-                                ? 'bg-green-50 border-2 border-green-500'
-                                : 'bg-red-50 border-2 border-red-500'
-                              : hasAnswer
-                              ? 'bg-indigo-50 border-2 border-indigo-300 hover:shadow-lg'
-                              : 'bg-white border-2 border-gray-200 hover:shadow-lg hover:border-indigo-300'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="font-semibold text-gray-800 text-sm">{card.front_text}</p>
-                            {showFeedback && (
-                              <div className="flex-shrink-0">
-                                {isCorrect ? (
-                                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold">✓</span>
-                                  </div>
-                                ) : (
-                                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold">✗</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-gray-600 text-xs mb-3">{card.back_text}</p>
-                          
-                          {/* Show assigned category */}
-                          {hasAnswer && (
-                            <div className="mt-2">
-                              <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                                showFeedback
-                                  ? isCorrect
-                                    ? 'bg-green-200 text-green-800'
-                                    : 'bg-red-200 text-red-800'
-                                  : 'bg-indigo-200 text-indigo-800'
-                              }`}>
-                                Your answer: {userAnswer}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Show correct answer if wrong */}
-                          {showFeedback && !isCorrect && (
-                            <div className="mt-2">
-                              <span className="inline-block px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full">
-                                Correct: {correctCategory}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* Normal Categorical View */
-              <div className="space-y-8">
-                {Object.entries(grouped).map(([category, categoryCards]) => (
-                  <div key={category}>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-4">{category}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {categoryCards.map(card => (
-                        <div key={card.card_id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
-                          <p className="font-semibold text-gray-800 mb-2">{card.front_text}</p>
-                          <p className="text-sm text-gray-600">{card.back_text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      );
     }
 
     if (studyMode === 'whiteboard') {
