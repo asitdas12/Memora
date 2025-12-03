@@ -18,7 +18,7 @@ export default function App() {
   const [showCardCreator, setShowCardCreator] = useState(false);
   const [showSetCreator, setShowSetCreator] = useState(false);
   const [showCardEditor, setShowCardEditor] = useState(false);
-  const [newCard, setNewCard] = useState({ frontText: '', backText: '', category: '' });
+  const [newCard, setNewCard] = useState({ frontText: '', backText: '', category: '', orderNumber: '' });
   const [newSet, setNewSet] = useState({ title: '', description: '' });
   const [editingCard, setEditingCard] = useState(null);
 
@@ -242,7 +242,7 @@ export default function App() {
         front_text: newCard.frontText,
         back_text: newCard.backText,
         category: newCard.category || null,
-        order_number: cards.length + 1,
+        order_number: newCard.orderNumber ? parseInt(newCard.orderNumber) : (cards.length + 1),
         position_x: Math.random() * 400 + 100,
         position_y: Math.random() * 300 + 100
       };
@@ -255,7 +255,7 @@ export default function App() {
       setCards([...cards, createdCard]);
       
       // Clear form and close modal
-      setNewCard({ frontText: '', backText: '', category: '' });
+      setNewCard({ frontText: '', backText: '', category: '', orderNumber: '' });
       setShowCardCreator(false);
       
     } catch (err) {
@@ -298,7 +298,8 @@ export default function App() {
       card_id: card.card_id,
       frontText: card.front_text,
       backText: card.back_text,
-      category: card.category || ''
+      category: card.category || '',
+      orderNumber: card.order_number || ''
     });
     setShowCardEditor(true);
   };
@@ -320,7 +321,8 @@ export default function App() {
       const cardData = {
         front_text: editingCard.frontText,
         back_text: editingCard.backText,
-        category: editingCard.category || null
+        category: editingCard.category || null,
+        order_number: editingCard.orderNumber ? parseInt(editingCard.orderNumber) : null
       };
       
       const updatedCard = await api.updateCard(editingCard.card_id, cardData);
@@ -629,6 +631,13 @@ export default function App() {
     }
 
     if (studyMode === 'list') {
+      // Sort cards by order_number
+      const sortedCards = [...cards].sort((a, b) => {
+        const orderA = a.order_number || 0;
+        const orderB = b.order_number || 0;
+        return orderA - orderB;
+      });
+
       return (
         <div className="min-h-screen bg-gray-50 p-8">
           <div className="max-w-4xl mx-auto">
@@ -662,7 +671,7 @@ export default function App() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-blue-900 mb-2">📝 Quiz Instructions</h3>
                 <p className="text-sm text-blue-800">
-                  Enter the correct order number (1-{cards.length}) for each flashcard based on their content. 
+                  Enter the correct order number (1-{sortedCards.length}) for each flashcard based on their content. 
                   Click "Check Answers" when you're ready to see your score!
                 </p>
               </div>
@@ -714,7 +723,7 @@ export default function App() {
             )}
 
             <div className="space-y-4">
-              {cards.map((card, index) => {
+              {sortedCards.map((card, index) => {
                 const correctOrder = index + 1;
                 const userAnswer = parseInt(userAnswers[card.card_id]);
                 const isCorrect = userAnswer === correctOrder;
@@ -731,14 +740,14 @@ export default function App() {
                       {/* Order Number Display or Input */}
                       {!isQuizMode ? (
                         <div className="bg-indigo-100 text-indigo-600 font-bold w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
-                          {correctOrder}
+                          {card.order_number || correctOrder}
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-1">
                           <input
                             type="number"
                             min="1"
-                            max={cards.length}
+                            max={sortedCards.length}
                             value={userAnswers[card.card_id] || ''}
                             onChange={(e) => handleAnswerChange(card.card_id, e.target.value)}
                             disabled={quizChecked}
@@ -1190,6 +1199,18 @@ export default function App() {
                     placeholder="e.g., Cell Biology"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Order Number (Optional)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newCard.orderNumber}
+                    onChange={(e) => setNewCard({ ...newCard, orderNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder={`Default: ${cards.length + 1}`}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank to auto-assign</p>
+                </div>
                 <button 
                   onClick={handleCreateCard} 
                   disabled={loading}
@@ -1247,6 +1268,18 @@ export default function App() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="e.g., Cell Biology"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Order Number (Optional)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingCard.orderNumber}
+                    onChange={(e) => setEditingCard({ ...editingCard, orderNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Enter order number"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank to keep current order</p>
                 </div>
                 <button 
                   onClick={handleUpdateCard} 
