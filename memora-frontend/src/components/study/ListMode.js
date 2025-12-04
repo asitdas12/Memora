@@ -40,7 +40,9 @@ export default function ListMode({ cards, onExit }) {
     const total = cards.length;
 
     cards.forEach((card, index) => {
-      const correctOrder = index + 1;
+    //   const correctOrder = index + 1;
+      const correctOrder = card.order_number || 0;  // ✅ CORRECT - use actual order_number
+
       const userAnswer = parseInt(userAnswers[card.card_id]);
       
       if (userAnswer === correctOrder) {
@@ -145,7 +147,8 @@ export default function ListMode({ cards, onExit }) {
 
         <div className="space-y-4">
             {sortedCards.map((card, index) => {
-            const correctOrder = index + 1;
+            // const correctOrder = index + 1;
+            const correctOrder = card.order_number || (index + 1);
             const userAnswer = parseInt(userAnswers[card.card_id]);
             const isCorrect = userAnswer === correctOrder;
             const showFeedback = isQuizMode && quizChecked;
