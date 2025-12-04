@@ -8,7 +8,8 @@ from app.models import User, FlashcardSet, Flashcard
 from app.schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     FlashcardSetCreate, FlashcardSetResponse,
-    FlashcardCreate, FlashcardUpdate, FlashcardResponse
+    FlashcardCreate, FlashcardUpdate, FlashcardResponse, 
+    PasswordResetRequest, PasswordResetConfirm # Add this
 )
 from app.auth import (
     get_password_hash, verify_password, create_access_token,
@@ -17,6 +18,9 @@ from app.auth import (
 from app.models import FlashcardLink
 
 from app import metrics  # Import the metrics router
+
+from datetime import timedelta, datetime
+from app.email import send_password_reset_email, generate_reset_token  # Add this
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -379,3 +383,68 @@ def delete_card_link(
     db.commit()
     
     return {"success": True, "message": "Link deleted successfully"}
+
+
+# Password Reset endpoints
+@app.post("/api/auth/forgot-password")
+def forgot_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
+    """
+    Request a password reset email
+    """
+    user = db.query(User).filter(User.email == request.email).first()
+    
+    # Always return success (don't reveal if email exists)
+    # This is a security best practice
+    if not user:
+        return {"success": True, "message": "If that email exists, a reset link has been sent"}
+    
+    # Generate reset token
+    reset_token = generate_reset_token()
+    user.reset_token = reset_token
+    user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+    
+    db.commit()
+    
+    # Send email
+    email_sent = send_password_reset_email(user.email, reset_token)
+    
+    if not email_sent:
+        raise HTTPException(status_code=500, detail="Failed to send reset email")
+    
+    return {"success": True, "message": "If that email exists, a reset link has been sent"}
+
+@app.post("/api/auth/reset-password")
+def reset_password(request: PasswordResetConfirm, db: Session = Depends(get_db)):
+    """
+    Reset password using token from email
+    """
+    # Find user with this token
+    user = db.query(User).filter(User.reset_token == request.token).first()
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Check if token is expired
+    if user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Update password
+    user.password_hash = get_password_hash(request.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    
+    db.commit()
+    
+    return {"success": True, "message": "Password has been reset successfully"}
+
+@app.get("/api/auth/verify-reset-token/{token}")
+def verify_reset_token(token: str, db: Session = Depends(get_db)):
+    """
+    Verify if a reset token is valid
+    """
+    user = db.query(User).filter(User.reset_token == token).first()
+    
+    if not user or user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    return {"valid": True, "email": user.email}

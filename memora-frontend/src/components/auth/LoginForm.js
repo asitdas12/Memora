@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from '../../api';
 
+import ForgotPassword from './ForgotPassword';
+
 export default function LoginForm({ onLoginSuccess }) {
     // const [user, setUser] = useState(null);
     // const [currentView, setCurrentView] = useState('login');
@@ -13,6 +15,9 @@ export default function LoginForm({ onLoginSuccess }) {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
+
+
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
 
     const validatePassword = (password) => {
         const errors = [];
@@ -99,6 +104,11 @@ export default function LoginForm({ onLoginSuccess }) {
     }
   };
 
+    // Add this before your return statement
+    if (showForgotPassword) {
+      return <ForgotPassword onBack={() => setShowForgotPassword(false)} />;
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
@@ -132,6 +142,15 @@ export default function LoginForm({ onLoginSuccess }) {
                 placeholder="Enter your password"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot password?
+              </button>
+            </div>
             {passwordFocused && (
                 <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs">
                 <p className="font-semibold mb-1">Password requirements:</p>

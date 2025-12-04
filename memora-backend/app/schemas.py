@@ -96,3 +96,11 @@ class UptimeStatus(BaseModel):
     total_requests: int
     failed_requests: int
     period: str
+
+# Password reset schemas
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str

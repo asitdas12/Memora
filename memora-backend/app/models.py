@@ -9,11 +9,15 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    # google_id = Column(String, unique=True, nullable=True) # we may decide to discard this
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
     
+    # Password reset fields
+    reset_token = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
+    
     flashcard_sets = relationship("FlashcardSet", back_populates="owner")
+
 
 class FlashcardSet(Base):
     __tablename__ = "flashcard_sets"
