@@ -278,6 +278,7 @@ export default function App() {
       onBack={() => setSelectedSet(null)}  // Fix: was calling exitStudyMode
       onLogout={handleLogout}
       onStartStudyMode={startStudyMode}  // Pass this function down
+      onCardsChanged={loadSets}  // Add this - reload sets when cards change
     />;
 
   }

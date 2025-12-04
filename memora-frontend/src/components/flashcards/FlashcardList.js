@@ -11,7 +11,8 @@ export default function FlashcardList({
   setCards, 
   onBack, 
   onLogout,
-  onStartStudyMode  // Add this prop
+  onStartStudyMode,  // Add this prop
+  onCardsChanged
 }) {
   const [progress, setProgress] = useState(null);
   const [showCardCreator, setShowCardCreator] = useState(false);
@@ -37,8 +38,7 @@ export default function FlashcardList({
   };
 
 
-  // UPDATED: Handle creating a card with API
-  const handleCreateCard = async () => { //delete
+  const handleCreateCard = async () => {
     if (!newCard.frontText || !newCard.backText) {
       setError('Both front and back text are required');
       return;
@@ -50,7 +50,6 @@ export default function FlashcardList({
       
       console.log('Creating new card...');
       
-      // Prepare card data matching your api.js expectations
       const cardData = {
         front_text: newCard.frontText,
         back_text: newCard.backText,
@@ -67,6 +66,11 @@ export default function FlashcardList({
       // Add to cards list
       setCards([...cards, createdCard]);
       
+      // Notify parent to reload sets
+      if (onCardsChanged) {
+        onCardsChanged();
+      }
+      
       // Clear form and close modal
       setNewCard({ frontText: '', backText: '', category: '', orderNumber: '' });
       setShowCardCreator(false);
@@ -79,7 +83,6 @@ export default function FlashcardList({
     }
   };
 
-  // UPDATED: Handle deleting a card with API
   const handleDeleteCard = async (cardId) => {
     if (!window.confirm('Are you sure you want to delete this card?')) {
       return;
@@ -97,6 +100,11 @@ export default function FlashcardList({
       // Remove from cards list
       setCards(cards.filter(c => c.card_id !== cardId));
       
+      // Notify parent to reload sets
+      if (onCardsChanged) {
+        onCardsChanged();
+      }
+      
     } catch (err) {
       console.error('❌ Failed to delete card:', err);
       setError(err.message || 'Failed to delete flashcard');
@@ -104,7 +112,7 @@ export default function FlashcardList({
       setLoading(false);
     }
   };
-
+  
   // NEW: Handle editing a card
   const handleEditCard = (card) => {
     setEditingCard({
