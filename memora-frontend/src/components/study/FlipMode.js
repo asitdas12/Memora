@@ -2,11 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from '../../api'; 
 
+// metrics
+import { metrics } from '../../services/metrics';
+
 export default function FlipMode({ cards, onExit }) {
+
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-
   const currentCard = cards[currentCardIndex];
+
+
+  // metrics
+  const handleFlip = () => {
+    const start = Date.now();
+    setIsFlipped(!isFlipped);
+    const duration = Date.now() - start;
+    metrics.trackLatency('flip_card', duration);
+  };
 
   const nextCard = () => {
     if (currentCardIndex < cards.length - 1) {

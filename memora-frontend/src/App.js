@@ -5,8 +5,10 @@ import ListMode from './components/study/ListMode';
 import CategoryMode from './components/study/CategoryMode';
 import WhiteboardMode from './components/study/WhiteboardMode';
 import FlashcardList from './components/flashcards/FlashcardList';
+import SatisfactionSurvey from './components/feedback/SatisfactionSurvey';
 // import Dashboard from './components/dashboard/Dashboard';
 
+import { metrics, measureLatency } from './services/metrics'; 
 import { BookOpen, Plus, Grid, List, Layout, BarChart3, Edit2, Trash2, Link2, X, Save, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from './api'; 
 
@@ -50,7 +52,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   // const [passwordFocused, setPasswordFocused] = useState(false);
 
-  
   useEffect(() => {
     if (user && currentView === 'dashboard') {
       loadSets();
@@ -64,12 +65,63 @@ export default function App() {
     }
   }, [selectedSet]);
 
+
+  // metrics 
+  useEffect(() => {
+    if (user) {
+      metrics.trackUserActivity(user.user_id);
+    }
+  }, [user]);
+
+  const [showSurvey, setShowSurvey] = useState(false);
+
+  // satisfaction
+  useEffect(() => {
+    // Show survey after 5 minutes of use
+    const timer = setTimeout(() => {
+      const lastSurvey = localStorage.getItem('lastSurvey');
+      const daysSinceLastSurvey = lastSurvey 
+        ? (Date.now() - parseInt(lastSurvey)) / (1000 * 60 * 60 * 24)
+        : 999;
+      
+      if (daysSinceLastSurvey > 0) { // Show every 0 days
+        setShowSurvey(true);
+      }
+    }, 1 * 60 * 1000); // 1 minutes
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleSurveyClose = () => {
+    setShowSurvey(false);
+    localStorage.setItem('lastSurvey', Date.now().toString());
+  };
+
+  // return (
+  //   <>
+  //     {/* Your existing JSX */}
+  //     {showSurvey && <SatisfactionSurvey onClose={handleSurveyClose} />}
+  //   </>
+  // );
+
+
+
+
+
+
+
+
+
   const loadSets = async () => {
     try {
       setLoading(true);
       console.log('Loading flashcard sets...');
-      
-      const data = await api.getSets();
+
+      //metrics
+      const data = await measureLatency('load_sets', async () => {
+        return await api.getSets();
+      });
+
       console.log('Sets loaded:', data);
       setSets(data);
       
@@ -136,7 +188,11 @@ export default function App() {
       setError('');
       
       console.log('Creating new set...');
-      const createdSet = await api.createSet(newSet.title, newSet.description);
+
+      // metrics
+      const createdSet = await measureLatency('create_set', async () => {
+        return await api.createSet(newSet.title, newSet.description);
+      });
       
       console.log('✅ Set created:', createdSet);
       
@@ -169,7 +225,11 @@ export default function App() {
       setError('');
       
       console.log('Deleting set:', setId);
-      await api.deleteSet(setId);
+
+      // metrics
+      await measureLatency('delete_set', async () => {
+        return await api.deleteSet(setId);
+      });
       
       console.log('✅ Set deleted');
       
@@ -392,6 +452,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {showSurvey && <SatisfactionSurvey onClose={handleSurveyClose} />}
     </div>
   );
 }

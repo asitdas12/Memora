@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, LargeBinary, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, LargeBinary, Text, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -59,3 +59,18 @@ class FlashcardLink(Base):
     
     from_card = relationship("Flashcard", foreign_keys=[from_card_id], back_populates="links_from")
     to_card = relationship("Flashcard", foreign_keys=[to_card_id], back_populates="links_to")
+
+class Metric(Base):
+    __tablename__ = "metrics"
+    
+    metric_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)  # Optional: track per-user metrics
+    type = Column(String, index=True, nullable=False)  # 'page_load', 'error', 'latency', etc.
+    data = Column(JSON, nullable=False)  # Store all metric data as JSON
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Optional relationship to user
+    user = relationship("User")
+    
+    def __repr__(self):
+        return f"<Metric(metric_id={self.metric_id}, type={self.type}, created_at={self.created_at})>"

@@ -16,6 +16,8 @@ from app.auth import (
 )
 from app.models import FlashcardLink
 
+from app import metrics  # Import the metrics router
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -29,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include metrics router
+app.include_router(metrics.router)
 
 # Auth endpoints
 @app.post("/api/auth/register", response_model=dict)

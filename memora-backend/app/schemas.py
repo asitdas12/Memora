@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # User schemas
@@ -67,3 +67,32 @@ class FlashcardResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Metrics schemas
+class MetricCreate(BaseModel):
+    type: str
+    data: Dict[str, Any]
+
+class MetricResponse(BaseModel):
+    metric_id: int
+    type: str
+    data: Dict[str, Any]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class MetricsDashboard(BaseModel):
+    avgPageLoad: float
+    errorRate: int
+    weeklyActiveUsers: int
+    avgSatisfaction: float
+    avgLatency: Dict[str, float]
+    period: Dict[str, str]
+
+class UptimeStatus(BaseModel):
+    uptime_percentage: float
+    total_requests: int
+    failed_requests: int
+    period: str
