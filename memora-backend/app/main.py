@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
-
 from app.database import engine, get_db, Base
 from app.models import User, FlashcardSet, Flashcard
 from app.schemas import (
@@ -15,6 +14,7 @@ from app.auth import (
     get_password_hash, verify_password, create_access_token,
     get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from app.models import FlashcardLink
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -255,3 +255,122 @@ def delete_card(
 @app.get("/")
 def root():
     return {"message": "Memora API is running"}
+
+# ==========================================
+# CARD LINKS ENDPOINTS (for Whiteboard Mode)
+# ==========================================
+
+@app.get("/api/cards/{card_id}/links")
+def get_card_links(
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all links for a specific card"""
+    # Verify user owns this card's set
+    card = db.query(Flashcard).filter(Flashcard.card_id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    flashcard_set = db.query(FlashcardSet).filter(
+        FlashcardSet.set_id == card.set_id,
+        FlashcardSet.user_id == current_user.user_id
+    ).first()
+    
+    if not flashcard_set:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all links where this card is the source
+    links = db.query(FlashcardLink).filter(
+        FlashcardLink.from_card_id == card_id
+    ).all()
+    
+    return links
+
+
+@app.post("/api/cards/{from_card_id}/links")
+def create_card_link(
+    from_card_id: int,
+    link_data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a link between two cards"""
+    to_card_id = link_data.get('to_card_id')
+    
+    if not to_card_id:
+        raise HTTPException(status_code=400, detail="to_card_id is required")
+    
+    # Verify user owns both cards
+    from_card = db.query(Flashcard).filter(Flashcard.card_id == from_card_id).first()
+    to_card = db.query(Flashcard).filter(Flashcard.card_id == to_card_id).first()
+    
+    if not from_card or not to_card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    # Verify both cards belong to user's sets
+    from_set = db.query(FlashcardSet).filter(
+        FlashcardSet.set_id == from_card.set_id,
+        FlashcardSet.user_id == current_user.user_id
+    ).first()
+    
+    to_set = db.query(FlashcardSet).filter(
+        FlashcardSet.set_id == to_card.set_id,
+        FlashcardSet.user_id == current_user.user_id
+    ).first()
+    
+    if not from_set or not to_set:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if link already exists
+    existing_link = db.query(FlashcardLink).filter(
+        FlashcardLink.from_card_id == from_card_id,
+        FlashcardLink.to_card_id == to_card_id
+    ).first()
+    
+    if existing_link:
+        return existing_link
+    
+    # Create new link
+    new_link = FlashcardLink(
+        from_card_id=from_card_id,
+        to_card_id=to_card_id
+    )
+    
+    db.add(new_link)
+    db.commit()
+    db.refresh(new_link)
+    
+    return new_link
+
+
+@app.delete("/api/links/{link_id}")
+def delete_card_link(
+    link_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a card link"""
+    link = db.query(FlashcardLink).filter(FlashcardLink.link_id == link_id).first()
+    
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    
+    # Verify user owns the cards in this link
+    from_card = db.query(Flashcard).filter(Flashcard.card_id == link.from_card_id).first()
+    
+    if not from_card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    flashcard_set = db.query(FlashcardSet).filter(
+        FlashcardSet.set_id == from_card.set_id,
+        FlashcardSet.user_id == current_user.user_id
+    ).first()
+    
+    if not flashcard_set:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    db.delete(link)
+    db.commit()
+    
+    return {"success": True, "message": "Link deleted successfully"}

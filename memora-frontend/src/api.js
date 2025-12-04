@@ -239,3 +239,42 @@ export const updateProgress = async (cardId, isMastered) => {
     body: JSON.stringify({ is_mastered: isMastered }),
   });
 };
+
+// ==========================================
+// CARD LINKS API FUNCTIONS (for Whiteboard Mode)
+// ==========================================
+
+/**
+ * Get all links for a specific card
+ * @param {number} cardId - ID of the card
+ * @returns {Promise} - Array of links
+ */
+export const getCardLinks = async (cardId) => {
+  return await apiCall(`/api/cards/${cardId}/links`, {
+    method: 'GET',
+  });
+};
+
+/**
+ * Create a link between two cards
+ * @param {number} fromCardId - ID of the source card
+ * @param {number} toCardId - ID of the target card
+ * @returns {Promise} - Created link
+ */
+export const createCardLink = async (fromCardId, toCardId) => {
+  return await apiCall(`/api/cards/${fromCardId}/links`, {
+    method: 'POST',
+    body: JSON.stringify({ to_card_id: toCardId }),
+  });
+};
+
+/**
+ * Delete a card link
+ * @param {number} linkId - ID of the link to delete
+ * @returns {Promise} - Success response
+ */
+export const deleteCardLink = async (linkId) => {
+  return await apiCall(`/api/links/${linkId}`, {
+    method: 'DELETE',
+  });
+};
